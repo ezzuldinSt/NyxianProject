@@ -15,7 +15,7 @@ class SettingsViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 3
+        return 4
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -23,14 +23,18 @@ class SettingsViewController: UITableViewController {
         
         switch indexPath.row {
         case 0:
+            cell.imageView?.image = UIImage(systemName: "brain.head.profile")
+            cell.textLabel?.text = "AI Assistant"
+            break
+        case 1:
             cell.imageView?.image = UIImage(systemName: "wrench.adjustable.fill")
             cell.textLabel?.text = "Toolchain"
             break
-        case 1:
+        case 2:
             cell.imageView?.image = UIImage(systemName: "paintbrush.fill")
             cell.textLabel?.text = "Customization"
             break
-        case 2:
+        case 3:
             cell.imageView?.image = UIImage(systemName: "document.badge.gearshape.fill")
             cell.textLabel?.text = "Miscellaneous"
             break
@@ -51,12 +55,15 @@ class SettingsViewController: UITableViewController {
         
         switch indexPath.row {
         case 0:
-            viewController = ToolChainController(style: .insetGrouped)
+            viewController = AISettingsViewController(style: .insetGrouped)
             break
         case 1:
-            viewController = CustomizationViewController(style: .insetGrouped)
+            viewController = ToolChainController(style: .insetGrouped)
             break
         case 2:
+            viewController = CustomizationViewController(style: .insetGrouped)
+            break
+        case 3:
             viewController = MiscellaneousController(style: .insetGrouped)
             break
         default:
