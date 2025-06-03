@@ -30,6 +30,7 @@ public class OpenAIService: AIService {
         "gpt-4",
         "gpt-3.5-turbo",
         "gpt-3.5-turbo-16k",
+        // Common Claude models that might be used via a compatible API
         "claude-3-opus-20240229",
         "claude-3-sonnet-20240229",
         "claude-3-haiku-20240307"
@@ -55,13 +56,15 @@ public class OpenAIService: AIService {
     public init(configuration: AIServiceConfiguration) {
         self.configuration = configuration
         
-        // Set the provider based on the base URL
+        // Set the provider based on the base URL, useful for custom OpenAI-compatible endpoints
         if configuration.baseURL.contains("anthropic.com") {
-            self.provider = .claude
+            self.provider = .claude // Or a specific custom type if distinguished
         } else if configuration.baseURL.contains("googleapis.com") {
-            self.provider = .gemini
-        } else if configuration.baseURL != "https://api.openai.com" {
+            self.provider = .gemini // Or a specific custom type
+        } else if configuration.baseURL != AIProvider.openAI.defaultBaseURL { // Check against default OpenAI URL
             self.provider = .custom
+        } else {
+            self.provider = .openAI
         }
     }
     
@@ -97,7 +100,7 @@ public class OpenAIService: AIService {
         let stop: [String]?
         
         /// Additional parameters
-        var additional_parameters: [String: String]?
+        var additional_parameters: [String: String]? // For custom parameters
     }
     
     /// Structure for OpenAI API chat completion response
@@ -178,7 +181,7 @@ public class OpenAIService: AIService {
         ]
         
         let request = ChatCompletionRequest(
-            model: configuration.model,
+            model: configuration.model, // Use configured model
             messages: messages,
             temperature: 0.7,
             max_tokens: 5,
@@ -199,7 +202,7 @@ public class OpenAIService: AIService {
         urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
         
         // Add organization ID if provided
-        if let organizationID = configuration.organizationID {
+        if let organizationID = configuration.organizationID, !organizationID.isEmpty {
             urlRequest.setValue(organizationID, forHTTPHeaderField: "OpenAI-Organization")
         }
         
@@ -209,7 +212,7 @@ public class OpenAIService: AIService {
         }
         
         // Set timeout
-        urlRequest.timeoutInterval = 10
+        urlRequest.timeoutInterval = 10 // Short timeout for validation
         
         let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
             // Handle network errors
@@ -278,8 +281,8 @@ public class OpenAIService: AIService {
             messages: messages,
             temperature: request.temperature,
             max_tokens: request.maxTokens,
-            stream: false,
-            stop: ["```"],
+            stream: false, // Not streaming for this method
+            stop: ["```"], // Common stop sequence for code
             additional_parameters: configuration.additionalParameters
         )
         
@@ -296,7 +299,7 @@ public class OpenAIService: AIService {
         urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
         
         // Add organization ID if provided
-        if let organizationID = configuration.organizationID {
+        if let organizationID = configuration.organizationID, !organizationID.isEmpty {
             urlRequest.setValue(organizationID, forHTTPHeaderField: "OpenAI-Organization")
         }
         
@@ -306,10 +309,10 @@ public class OpenAIService: AIService {
         }
         
         // Set timeout
-        urlRequest.timeoutInterval = 30
+        urlRequest.timeoutInterval = 30 // Longer timeout for actual requests
         
         currentTask = URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
-            guard self != nil else { return }
+            guard self != nil else { return } // Ensure self is still around
             
             // Handle network errors
             if let error = error {
@@ -415,7 +418,7 @@ public class OpenAIService: AIService {
             messages: messages,
             temperature: request.temperature,
             max_tokens: request.maxTokens,
-            stream: true,
+            stream: true, // Enable streaming
             stop: ["```"],
             additional_parameters: configuration.additionalParameters
         )
@@ -433,7 +436,7 @@ public class OpenAIService: AIService {
         urlRequest.setValue("Bearer \(configuration.apiKey)", forHTTPHeaderField: "Authorization")
         
         // Add organization ID if provided
-        if let organizationID = configuration.organizationID {
+        if let organizationID = configuration.organizationID, !organizationID.isEmpty {
             urlRequest.setValue(organizationID, forHTTPHeaderField: "OpenAI-Organization")
         }
         
@@ -443,7 +446,7 @@ public class OpenAIService: AIService {
         }
         
         // Set timeout
-        urlRequest.timeoutInterval = 60
+        urlRequest.timeoutInterval = 60 // Longer timeout for streaming
         
         currentStreamingTask = URLSession.shared.dataTask(with: urlRequest) { [weak self] data, response, error in
             guard let self = self else { return }
@@ -481,28 +484,38 @@ public class OpenAIService: AIService {
                     // Process the streaming data
                     self.processStreamingData(data)
                     
-                    // Signal completion
-                    self.streamingDelegate?.didFinishCompletion()
+                    // Signal completion (Note: OpenAI stream might not have a single "finish" event in the same way,
+                    // rely on finish_reason in delta or [DONE] marker)
+                    // The didFinishCompletion might be called multiple times if not handled carefully,
+                    // or after the last chunk is processed.
+                    // For OpenAI, the [DONE] marker is the primary indicator.
+                    
                 case 401:
                     // Unauthorized
                     self.streamingDelegate?.didEncounterError(.invalidAPIKey)
+                    self.streamingDelegate?.didFinishCompletion() // Ensure delegate is notified of finish
                 case 429:
                     // Rate limit exceeded
                     self.streamingDelegate?.didEncounterError(.rateLimitExceeded)
+                    self.streamingDelegate?.didFinishCompletion()
                 case 500...599:
                     // Server error
                     self.streamingDelegate?.didEncounterError(.serviceUnavailable)
+                    self.streamingDelegate?.didFinishCompletion()
                 default:
                     // Parse error response if available
                     if let data = data,
                        let errorResponse = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
                         self.streamingDelegate?.didEncounterError(.serviceError(errorResponse.error.message))
                     } else {
-                        self.streamingDelegate?.didEncounterError(.serviceError("Unknown error with status code: \(httpResponse.statusCode)")))
+                        // Corrected line:
+                        self.streamingDelegate?.didEncounterError(.serviceError("Unknown error with status code: \(httpResponse.statusCode)"))
                     }
+                    self.streamingDelegate?.didFinishCompletion()
                 }
             } else {
                 self.streamingDelegate?.didEncounterError(.serviceError("Invalid response from server"))
+                self.streamingDelegate?.didFinishCompletion()
             }
         }
         
@@ -668,35 +681,42 @@ public class OpenAIService: AIService {
         // Convert data to string
         guard let string = String(data: data, encoding: .utf8) else {
             streamingDelegate?.didEncounterError(.parsingError)
+            streamingDelegate?.didFinishCompletion() // Ensure finish is called on error
             return
         }
         
         // Split the string by "data: " to get individual chunks
-        let chunks = string.components(separatedBy: "data: ")
-        
-        for chunk in chunks {
-            // Skip empty chunks
-            if chunk.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                continue
-            }
-            
-            // Skip "[DONE]" marker
-            if chunk.trimmingCharacters(in: .whitespacesAndNewlines) == "[DONE]" {
-                continue
-            }
-            
-            // Try to parse the chunk as JSON
-            if let data = chunk.data(using: .utf8),
-               let response = try? JSONDecoder().decode(ChatCompletionResponse.self, from: data),
-               let choice = response.choices.first,
-               let delta = choice.delta,
-               let content = delta.content { // This will now correctly unwrap the optional content
+        // OpenAI streaming responses are typically newline-separated JSON objects prefixed with "data: "
+        let eventStrings = string.components(separatedBy: "\n").filter { !$0.isEmpty }
+
+        for eventString in eventStrings {
+            if eventString.hasPrefix("data: ") {
+                let jsonString = String(eventString.dropFirst(6)) // Remove "data: "
                 
-                // Append the content to the buffer
-                streamingBuffer += content
+                if jsonString.trimmingCharacters(in: .whitespacesAndNewlines) == "[DONE]" {
+                    streamingDelegate?.didFinishCompletion()
+                    return // Stream is finished
+                }
                 
-                // Notify the delegate
-                streamingDelegate?.didReceiveCompletionChunk(content)
+                // Try to parse the chunk as JSON
+                if let jsonData = jsonString.data(using: .utf8),
+                   let response = try? JSONDecoder().decode(ChatCompletionResponse.self, from: jsonData),
+                   let choice = response.choices.first,
+                   let delta = choice.delta,
+                   let content = delta.content { // This will now correctly unwrap the optional content
+                    
+                    // Append the content to the buffer
+                    streamingBuffer += content
+                    
+                    // Notify the delegate
+                    streamingDelegate?.didReceiveCompletionChunk(content)
+
+                    // Check for finish reason in delta (though [DONE] is more reliable for OpenAI)
+                    if choice.finish_reason != nil {
+                         streamingDelegate?.didFinishCompletion()
+                         return
+                    }
+                }
             }
         }
     }

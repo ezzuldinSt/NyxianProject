@@ -92,10 +92,8 @@ class Coordinator: NSObject, TextViewDelegate {
             }
         }
         
-        // Trigger AI completion (moved to CodeEditorAIIntegration via swizzling)
-        // No direct call needed here anymore if swizzling is correctly set up in CodeEditorAIIntegration.
-        // The swizzled method in CodeEditorAIIntegration will call this original implementation
-        // and then call parent.triggerAICompletion().
+        // Trigger AI completion directly
+        parent.triggerAICompletion()
     }
     
     func updateDiag(diag: [Synitem]?) {

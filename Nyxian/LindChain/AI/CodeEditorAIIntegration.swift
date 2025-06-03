@@ -199,30 +199,30 @@ extension CodeEditorViewController: AICompletionStreamDelegate {
     /// The AI suggestion overlay
     private var aiSuggestionOverlay: AISuggestionOverlay? {
         get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.aiSuggestionOverlay) as? AISuggestionOverlay
+            return objc_getAssociatedObject(self, &AssociatedKeys.aiSuggestionOverlayKey) as? AISuggestionOverlay
         }
         set {
-            objc_setAssociatedObject(self, &AssociatedKeys.aiSuggestionOverlay, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, &AssociatedKeys.aiSuggestionOverlayKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
     /// The AI completion debouncer
     private var aiCompletionDebouncer: Coordinator.Debouncer? { // Coordinator.Debouncer is already internal
         get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.aiCompletionDebouncer) as? Coordinator.Debouncer
+            return objc_getAssociatedObject(self, &AssociatedKeys.aiCompletionDebouncerKey) as? Coordinator.Debouncer
         }
         set {
-            objc_setAssociatedObject(self, &AssociatedKeys.aiCompletionDebouncer, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, &AssociatedKeys.aiCompletionDebouncerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
     /// The current AI completion
     private var currentAICompletion: String? {
         get {
-            return objc_getAssociatedObject(self, &AssociatedKeys.currentAICompletion) as? String
+            return objc_getAssociatedObject(self, &AssociatedKeys.currentAICompletionKey) as? String
         }
         set {
-            objc_setAssociatedObject(self, &AssociatedKeys.currentAICompletion, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            objc_setAssociatedObject(self, &AssociatedKeys.currentAICompletionKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
     
@@ -233,9 +233,9 @@ extension CodeEditorViewController: AICompletionStreamDelegate {
     
     /// Associated keys for objc_getAssociatedObject
     private struct AssociatedKeys {
-        static var aiSuggestionOverlay = "aiSuggestionOverlay"
-        static var aiCompletionDebouncer = "aiCompletionDebouncer"
-        static var currentAICompletion = "currentAICompletion"
+        static var aiSuggestionOverlayKey: UInt8 = 0
+        static var aiCompletionDebouncerKey: UInt8 = 0
+        static var currentAICompletionKey: UInt8 = 0
     }
     
     // MARK: - Setup
