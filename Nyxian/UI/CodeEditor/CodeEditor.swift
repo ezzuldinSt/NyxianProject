@@ -184,7 +184,7 @@ class CodeEditorViewController: UIViewController {
         self.setupToolbar(textView: self.textView)
         
         self.coordinator = Coordinator(parent: self)
-        self.textView.editorDelegate = self.coordinator
+        self.textView.editorDelegate = self.coordinator // This ensures Coordinator's textViewDidChange is called
         
         (self.view as! OnDisappearUIView).onDisappear = { [weak self] in
             guard let synpushServer = self?.synpushServer else { return }
@@ -212,6 +212,9 @@ class CodeEditorViewController: UIViewController {
                 }
             }
         }
+        
+        // Setup AI Integration
+        self.setupAIIntegration()
     }
     
     func setupToolbar(textView: TextView) {

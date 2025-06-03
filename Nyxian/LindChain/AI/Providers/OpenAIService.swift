@@ -73,7 +73,7 @@ public class OpenAIService: AIService {
         let role: String
         
         /// The content of the message
-        let content: String
+        let content: String? // Changed to String? to handle null content in streaming deltas
     }
     
     /// Structure for OpenAI API chat completion request
@@ -353,7 +353,7 @@ public class OpenAIService: AIService {
                         
                         // Create the AI completion response
                         let aiResponse = AICompletionResponse(
-                            completion: message.content,
+                            completion: message.content ?? "", // Handle optional content
                             isTruncated: firstChoice.finish_reason == "length",
                             tokensUsed: openAIResponse.usage?.total_tokens,
                             additionalInfo: [
@@ -498,7 +498,7 @@ public class OpenAIService: AIService {
                        let errorResponse = try? JSONDecoder().decode(APIErrorResponse.self, from: data) {
                         self.streamingDelegate?.didEncounterError(.serviceError(errorResponse.error.message))
                     } else {
-                        self.streamingDelegate?.didEncounterError(.serviceError("Unknown error with status code: \(httpResponse.statusCode)"))
+                        self.streamingDelegate?.didEncounterError(.serviceError("Unknown error with status code: \(httpResponse.statusCode)")))
                     }
                 }
             } else {
@@ -690,7 +690,7 @@ public class OpenAIService: AIService {
                let response = try? JSONDecoder().decode(ChatCompletionResponse.self, from: data),
                let choice = response.choices.first,
                let delta = choice.delta,
-               let content = delta.content {
+               let content = delta.content { // This will now correctly unwrap the optional content
                 
                 // Append the content to the buffer
                 streamingBuffer += content

@@ -29,8 +29,8 @@
 - (nonnull instancetype)init:(nonnull NSArray*)flags;
 
 - (int)compileObject:(nonnull NSString*)filePath
-          outputFile:(NSString*)outputFilePath
-      platformTriple:(NSString*)platformTriple
+          outputFile:(nonnull NSString*)outputFilePath
+      platformTriple:(nonnull NSString*)platformTriple
               issues:(NSMutableArray<Synitem*> * _Nullable * _Nonnull)issues;
 
 @end

@@ -32,7 +32,7 @@ import Runestone
 
 // MARK: - COORDINATOR
 class Coordinator: NSObject, TextViewDelegate {
-    private let parent: CodeEditorViewController
+    let parent: CodeEditorViewController // Changed from private to internal (default)
     private var lines: [UInt64] = []
     private var message: [(NeoButton,UIView)] = []
     
@@ -42,11 +42,11 @@ class Coordinator: NSObject, TextViewDelegate {
     private let textInputView: TextInputView?
     private let textView: TextView
 
-    private let debounce: Debouncer
+    let debounce: Debouncer // Made internal for AIIntegration
     
     init(parent: CodeEditorViewController) {
         self.parent = parent
-        self.debounce = Debouncer(delay: 1.5)
+        self.debounce = Debouncer(delay: 1.5) // Default delay, can be adjusted
         self.textView = parent.textView
         self.textInputView = parent.textView.getTextInputView()
         super.init()
@@ -57,7 +57,8 @@ class Coordinator: NSObject, TextViewDelegate {
         self.textViewDidChange(self.parent.textView)
     }
     
-    func textViewDidChange(_ textView: TextView) {
+    @objc func textViewDidChange(_ textView: TextView) { // Added @objc for AIIntegration swizzling
+        // Existing diagnostic logic
         guard self.parent.synpushServer != nil else { return }
         if !self.iDidInvalid {
             self.iDidInvalid = true
@@ -90,6 +91,11 @@ class Coordinator: NSObject, TextViewDelegate {
                 self.updateDiag(diag: diag)
             }
         }
+        
+        // Trigger AI completion (moved to CodeEditorAIIntegration via swizzling)
+        // No direct call needed here anymore if swizzling is correctly set up in CodeEditorAIIntegration.
+        // The swizzled method in CodeEditorAIIntegration will call this original implementation
+        // and then call parent.triggerAICompletion().
     }
     
     func updateDiag(diag: [Synitem]?) {
