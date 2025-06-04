@@ -215,12 +215,14 @@ class AISettingsViewController: UITableViewController {
         
         switch row {
         case .selection:
-            let cell = PickerCell(title: "Provider", options: AIProvider.allCases.map { $0.rawValue })
-            cell.selectedIndex = AIProvider.allCases.firstIndex(of: currentProvider) ?? 0
-            
-            // Add selection change handler
-            cell.onSelectionChange = { [weak self] selectedIndex in
-                if let provider = AIProvider.allCases[safe: selectedIndex] {
+            let cell = PickerTableCell(
+                options: AIProvider.allCases.map { $0.rawValue },
+                title: "Provider",
+                key: "AI_CurrentProvider",
+                defaultValue: AIProvider.allCases.firstIndex(of: currentProvider) ?? 0
+            )
+            cell.callback = { [weak self] index in
+                if let provider = AIProvider.allCases[safe: index] {
                     self?.currentProvider = provider
                     self?.tableView.reloadSections(IndexSet(integer: Section.configuration.rawValue), with: .automatic)
                 }
@@ -272,15 +274,15 @@ class AISettingsViewController: UITableViewController {
             let key = "AI_\(currentProvider.rawValue)_Model"
             let currentModel = currentConfiguration?.model ?? models.first ?? ""
             
-            let cell = PickerCell(title: "Model", options: models)
-            
-            // Set the selected model if it exists
-            if let index = models.firstIndex(of: currentModel) {
-                cell.selectedIndex = index
-            }
+            let cell = PickerTableCell(
+                options: models,
+                title: "Model",
+                key: key,
+                defaultValue: models.firstIndex(of: currentModel) ?? 0
+            )
             
             // Add selection change handler
-            cell.onSelectionChange = { [weak self] selectedIndex in
+            cell.callback = { [weak self] selectedIndex in
                 if let model = models[safe: selectedIndex] {
                     var config = self?.currentConfiguration ?? AIServiceConfiguration(
                         apiKey: "",
@@ -299,23 +301,7 @@ class AISettingsViewController: UITableViewController {
             let key = "AI_\(currentProvider.rawValue)_UseStreaming"
             let useStreaming = currentConfiguration?.useStreaming ?? true
             
-            let cell = SwitchCell(title: "Use Streaming", key: key, defaultValue: useStreaming)
-            
-            // Add switch change handler
-            let originalValueDidChange = cell.valueDidChange
-            cell.valueDidChange = { isOn in
-                originalValueDidChange?(isOn)
-                
-                // Update configuration
-                var config = self.currentConfiguration ?? AIServiceConfiguration(
-                    apiKey: "",
-                    baseURL: self.currentProvider.defaultBaseURL,
-                    model: "",
-                    useStreaming: isOn
-                )
-                config.useStreaming = isOn
-                self.currentConfiguration = config
-            }
+            let cell = SwitchTableCell(title: "Use Streaming", key: key, defaultValue: useStreaming)
             
             return cell
             
@@ -338,34 +324,73 @@ class AISettingsViewController: UITableViewController {
         let key = "AI_Feature_\(feature.rawValue)"
         let isEnabled = enabledFeatures.contains(feature)
         
-        let cell = SwitchCell(title: feature.rawValue, key: key, defaultValue: isEnabled)
-        cell.detailTextLabel?.text = feature.description
-        
         // Check if the current provider supports this feature
         let isSupported = isFeatureSupported(feature)
-        cell.switchControl.isEnabled = isSupported
         
+        // Create a custom cell with subtitle style for feature description
+        let customCell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+        customCell.selectionStyle = .none
+        
+        // Add label
+        let label = UILabel()
+        label.text = feature.rawValue
+        label.translatesAutoresizingMaskIntoConstraints = false
+        customCell.contentView.addSubview(label)
+        
+        // Add switch
+        let toggle = UISwitch()
+        toggle.onTintColor = UIColor.systemBlue
+        toggle.setOn(isEnabled, animated: false)
+        toggle.isEnabled = isSupported
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        toggle.addTarget(self, action: #selector(featureToggleChanged(_:)), for: .valueChanged)
+        toggle.tag = indexPath.row // Use tag to identify which feature
+        customCell.contentView.addSubview(toggle)
+        
+        // Add description label
+        let descriptionLabel = UILabel()
+        descriptionLabel.font = UIFont.systemFont(ofSize: 12)
+        descriptionLabel.numberOfLines = 0
         if !isSupported {
-            cell.detailTextLabel?.text = "\(feature.description) (Not supported by \(currentProvider.rawValue))"
-            cell.detailTextLabel?.textColor = .systemRed
+            descriptionLabel.text = "\(feature.description) (Not supported by \(currentProvider.rawValue))"
+            descriptionLabel.textColor = .systemRed
         } else {
-            cell.detailTextLabel?.textColor = .secondaryLabel
+            descriptionLabel.text = feature.description
+            descriptionLabel.textColor = .secondaryLabel
         }
+        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        customCell.contentView.addSubview(descriptionLabel)
         
-        // Add switch change handler
-        let originalValueDidChange = cell.valueDidChange
-        cell.valueDidChange = { isOn in
-            originalValueDidChange?(isOn)
+        // Set constraints
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: customCell.contentView.topAnchor, constant: 8),
+            label.leadingAnchor.constraint(equalTo: customCell.contentView.leadingAnchor, constant: 16),
             
-            // Update enabled features
-            if isOn {
-                self.enabledFeatures.insert(feature)
-            } else {
-                self.enabledFeatures.remove(feature)
-            }
-        }
+            toggle.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 16),
+            toggle.trailingAnchor.constraint(equalTo: customCell.contentView.trailingAnchor, constant: -16),
+            toggle.centerYAnchor.constraint(equalTo: customCell.contentView.centerYAnchor),
+            
+            descriptionLabel.topAnchor.constraint(equalTo: label.bottomAnchor, constant: 4),
+            descriptionLabel.leadingAnchor.constraint(equalTo: customCell.contentView.leadingAnchor, constant: 16),
+            descriptionLabel.trailingAnchor.constraint(equalTo: toggle.leadingAnchor, constant: -16),
+            descriptionLabel.bottomAnchor.constraint(equalTo: customCell.contentView.bottomAnchor, constant: -8)
+        ])
         
-        return cell
+        return customCell
+    }
+    
+    @objc private func featureToggleChanged(_ sender: UISwitch) {
+        guard let feature = AIFeature.allCases[safe: sender.tag] else { return }
+        
+        let key = "AI_Feature_\(feature.rawValue)"
+        UserDefaults.standard.set(sender.isOn, forKey: key)
+        
+        // Update enabled features
+        if sender.isOn {
+            enabledFeatures.insert(feature)
+        } else {
+            enabledFeatures.remove(feature)
+        }
     }
     
     /// Creates a cell for the actions section
@@ -378,23 +403,24 @@ class AISettingsViewController: UITableViewController {
         
         switch row {
         case .validate:
-            let cell = ButtonCell(title: "Validate API Key")
+            let cell = ButtonTableCell(title: "Validate API Key")
             cell.button?.addAction(UIAction { [weak self] _ in
                 self?.validateAPIKey()
             }, for: .touchUpInside)
             return cell
             
         case .importExport:
-            let cell = ButtonCell(title: "Import/Export Settings")
+            let cell = ButtonTableCell(title: "Import/Export Settings")
             cell.button?.addAction(UIAction { [weak self] _ in
                 self?.showImportExportOptions()
             }, for: .touchUpInside)
             return cell
             
         case .clearSettings:
-            let cell = ButtonCell(title: "Clear AI Settings")
+            let cell = ButtonTableCell(title: "Clear AI Settings")
             cell.button?.backgroundColor = .systemRed
             cell.button?.setTitleColor(.white, for: .normal)
+            cell.button?.layer.cornerRadius = 8
             cell.button?.addAction(UIAction { [weak self] _ in
                 self?.showClearSettingsConfirmation()
             }, for: .touchUpInside)
