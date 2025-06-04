@@ -106,16 +106,17 @@ public class AIKeychainManager {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         
         // Check for success
-        guard status == errSecSuccess else {
+        if status == errSecSuccess {
+            // Ensure we got data back
+            guard let data = result as? Data else {
+                throw AIKeychainError.noDataFound
+            }
+            return data
+        } else if status == errSecItemNotFound {
+            throw AIKeychainError.noDataFound
+        } else {
             throw AIKeychainError.operationFailed(status)
         }
-        
-        // Ensure we got data back
-        guard let data = result as? Data else {
-            throw AIKeychainError.noDataFound
-        }
-        
-        return data
     }
     
     /// Updates data in the keychain for a given key
@@ -273,6 +274,8 @@ public class AIKeychainManager {
                 // Skip providers with no configuration
                 continue
             } catch {
+                // Re-throw the original error with more context
+                print("Error retrieving configuration for \(provider): \(error)")
                 throw error
             }
         }
@@ -283,12 +286,16 @@ public class AIKeychainManager {
             timestamp: Date()
         )
         
-        // Encode the backup
-        guard let data = try? JSONEncoder().encode(backup) else {
+        // Encode the backup with better error handling
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(backup)
+            return data
+        } catch {
+            print("Failed to encode backup: \(error)")
             throw AIKeychainError.backupCreationFailed
         }
-        
-        return data
     }
     
     /// Restores configurations from a backup
