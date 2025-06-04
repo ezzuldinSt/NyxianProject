@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Foundation
 
 /// View controller for AI settings
 class AISettingsViewController: UITableViewController {
