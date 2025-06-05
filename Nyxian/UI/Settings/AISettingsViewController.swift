@@ -113,6 +113,9 @@ class AISettingsViewController: UITableViewController {
         }
     }
     
+    // Strong references to text field delegates to prevent deallocation
+    private var textFieldDelegates: [UITextField: TextFieldDelegateWithCallback] = [:]
+    
     /// The activity indicator
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     
@@ -253,7 +256,7 @@ class AISettingsViewController: UITableViewController {
             // Update configuration when text changes
             let originalDelegate = cell.textField.delegate
             cell.textField.delegate = nil
-            cell.textField.delegate = TextFieldDelegateWithCallback(
+            let delegate = TextFieldDelegateWithCallback(
                 originalDelegate: originalDelegate,
                 onTextChange: { [weak self] newText in
                     var config = self?.currentConfiguration ?? AIServiceConfiguration(
@@ -266,6 +269,8 @@ class AISettingsViewController: UITableViewController {
                     self?.currentConfiguration = config
                 }
             )
+            textFieldDelegates[cell.textField] = delegate
+            cell.textField.delegate = delegate
             
             return cell
             
@@ -321,7 +326,6 @@ class AISettingsViewController: UITableViewController {
             return UITableViewCell()
         }
         
-        let key = "AI_Feature_\(feature.rawValue)"
         let isEnabled = enabledFeatures.contains(feature)
         
         // Check if the current provider supports this feature
@@ -636,21 +640,26 @@ extension AISettingsViewController: UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let url = urls.first else { return }
         
-        // Handle import or export based on the mode
-        if controller.documentPickerMode == .open {
-            // Import
-            do {
-                try AIKeychainManager.shared.importConfigurationsFromFile(at: url)
-                
-                // Reload configurations
-                AIServiceManager.shared.loadConfigurations()
-                
-                // Reload the table view
-                tableView.reloadData()
-                
-                showAlert(title: "Success", message: "AI settings have been imported.")
-            } catch {
-                showAlert(title: "Import Failed", message: error.localizedDescription)
+        // Handle import or export based on the URL access
+        if url.startAccessingSecurityScopedResource() {
+            defer { url.stopAccessingSecurityScopedResource() }
+            
+            // Check if this is an import operation by checking if we can read the file
+            if FileManager.default.isReadableFile(atPath: url.path) {
+                // Import
+                do {
+                    try AIKeychainManager.shared.importConfigurationsFromFile(at: url)
+                    
+                    // Reload configurations
+                    AIServiceManager.shared.loadConfigurations()
+                    
+                    // Reload the table view
+                    tableView.reloadData()
+                    
+                    showAlert(title: "Success", message: "AI settings have been imported.")
+                } catch {
+                    showAlert(title: "Import Failed", message: error.localizedDescription)
+                }
             }
         }
     }
@@ -699,6 +708,9 @@ class AIAdvancedSettingsViewController: UITableViewController {
     
     /// The additional parameters
     private var additionalParameters: [String: String] = [:]
+    
+    // Strong references to text field delegates to prevent deallocation
+    private var textFieldDelegates: [UITextField: TextFieldDelegateWithCallback] = [:]
     
     // MARK: - Lifecycle
     
@@ -761,7 +773,7 @@ class AIAdvancedSettingsViewController: UITableViewController {
             // Update configuration when text changes
             let originalDelegate = cell.textField.delegate
             cell.textField.delegate = nil
-            cell.textField.delegate = TextFieldDelegateWithCallback(
+            let delegate = TextFieldDelegateWithCallback(
                 originalDelegate: originalDelegate,
                 onTextChange: { [weak self] newText in
                     var config = self?.configuration ?? AIServiceConfiguration(
@@ -775,6 +787,8 @@ class AIAdvancedSettingsViewController: UITableViewController {
                     self?.onConfigurationChanged?(config)
                 }
             )
+            textFieldDelegates[cell.textField] = delegate
+            cell.textField.delegate = delegate
             
             return cell
             
@@ -788,7 +802,7 @@ class AIAdvancedSettingsViewController: UITableViewController {
             // Update configuration when text changes
             let originalDelegate = cell.textField.delegate
             cell.textField.delegate = nil
-            cell.textField.delegate = TextFieldDelegateWithCallback(
+            let delegate = TextFieldDelegateWithCallback(
                 originalDelegate: originalDelegate,
                 onTextChange: { [weak self] newText in
                     var config = self?.configuration ?? AIServiceConfiguration(
@@ -802,6 +816,8 @@ class AIAdvancedSettingsViewController: UITableViewController {
                     self?.onConfigurationChanged?(config)
                 }
             )
+            textFieldDelegates[cell.textField] = delegate
+            cell.textField.delegate = delegate
             
             return cell
             
