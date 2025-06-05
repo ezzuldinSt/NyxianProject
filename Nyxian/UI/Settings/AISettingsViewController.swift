@@ -125,8 +125,7 @@ class AISettingsViewController: UITableViewController {
         super.viewDidLoad()
         
         self.title = "AI Settings"
-        self.tableView.rowHeight = UITableView.automaticDimension
-        self.tableView.estimatedRowHeight = 44
+        self.tableView.rowHeight = 44
         
         // Add activity indicator to navigation bar
         let barButton = UIBarButtonItem(customView: activityIndicator)

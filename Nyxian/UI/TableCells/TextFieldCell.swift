@@ -58,11 +58,18 @@ class TextFieldTableCell: UITableViewCell, UITextFieldDelegate {
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             label.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            label.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 11),
+            label.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -11),
 
             textField.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 12),
             textField.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             textField.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            textField.heightAnchor.constraint(equalToConstant: 30)
+            textField.heightAnchor.constraint(equalToConstant: 30),
+            textField.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 7),
+            textField.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -7),
+            
+            // Ensure minimum content view height
+            contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
         ])
     }
 
