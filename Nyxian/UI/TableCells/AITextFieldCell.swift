@@ -82,6 +82,8 @@ class TextFieldCell: UITableViewCell, UITextFieldDelegate {
         // Set up constraints
         NSLayoutConstraint.activate([
             label.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            label.topAnchor.constraint(greaterThanOrEqualTo: contentView.topAnchor, constant: 8),
+            label.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor, constant: -8),
             label.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
 
             textField.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 12),
