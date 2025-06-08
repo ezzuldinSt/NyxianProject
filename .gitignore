@@ -1,2 +1,12 @@
 Nyxian/LindChain/LLVM.xcframework
 PrivateConfig.xcconfig
+
+
+.env
+.gitmodules
+.swiftlint.yml
+.swiftlintignore
+
+
+
+.gitignore
